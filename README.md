@@ -357,7 +357,7 @@ pytest tests/test_model.py -v
 ### Команда проекта
 
 - **Общие вопросы:** [@Starnatvl](https://github.com/Starnatvl) (Team Lead)
-- **Вопросы по данным:** [@SS-O-star](https://github.com/StrikNa) (Data Quality)
+- **Вопросы по данным:** [@StrikNa](https://github.com/StrikNa) (Data Quality)
 - **Вопросы по EDA:** [@Starnatvl](https://github.com/Starnatvl) (EDA Lead)
 - **Вопросы по документации:** [@Maria_Kob](https://github.com/Maria_Kob) (Documentation)
 - **Вопросы по ML:** [@IluxaXP](https://github.com/IluxaXP) (ML Engineer)
