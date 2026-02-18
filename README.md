@@ -1,4 +1,3 @@
-```markdown
 # 🚀 ML Trading Signals — Хакатон 2engine
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -223,10 +222,10 @@ uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 
 | Метрика | Baseline (EMA) | Random Forest | CatBoost | **Финальная модель** |
 |---------|----------------|---------------|----------|----------------------|
-| **F1-score (macro)** | 0.23 | 0.45 | 0.58 | **0.62** |
-| **Precision (BUY)** | 0.42 | 0.63 | 0.71 | **0.74** |
-| **Recall (SELL)** | 0.19 | 0.51 | 0.64 | **0.68** |
-| **Accuracy** | 0.89 | 0.91 | 0.93 | **0.94** |
+| **F1-score (macro)** | 0.23 | 0.45 | 0.58 | **in test** |
+| **Precision (BUY)** | 0.42 | 0.63 | 0.71 | **in test** |
+| **Recall (SELL)** | 0.19 | 0.51 | 0.64 | **in test** |
+| **Accuracy** | 0.89 | 0.91 | 0.93 | **in test** |
 | **ROI (backtest)** | +2.3% | +5.1% | +8.7% | **+11.2%** |
 
 ### 🎯 Ключевые достижения
