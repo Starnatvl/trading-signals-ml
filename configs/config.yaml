@@ -1,0 +1,32 @@
+# Основные настройки проекта
+data:
+  raw_path: "data/raw/ml_dataset_2026-01-19.csv"
+  processed_path: "data/processed/"
+  test_size: 0.2
+  random_state: 42
+
+features:
+  window_size: 10  # Размер скользящего окна (минут)
+  lag_features: [1, 2, 3, 5, 10]  # Лаговые фичи
+  
+model:
+  name: "catboost"
+  params:
+    iterations: 1000
+    learning_rate: 0.03
+    depth: 6
+    l2_leaf_reg: 3
+    loss_function: "MultiClass"
+    
+training:
+  cv_folds: 5
+  early_stopping_rounds: 50
+  verbose: 100
+
+evaluation:
+  metrics: ["f1_macro", "precision", "recall"]
+  
+api:
+  host: "0.0.0.0"
+  port: 8000
+  model_path: "models/final_model.cbm"
