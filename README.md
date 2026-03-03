@@ -1,12 +1,17 @@
+## 📄 README.md (исправленный состав команды)
+
+```markdown
 # 🚀 ML Trading Signals — Хакатон 2engine
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0-green.svg)](https://fastapi.tiangolo.com/)
-[![CatBoost](https://img.shields.io/badge/CatBoost-1.2.2-orange.svg)](https://catboost.ai/)
+[![LightGBM](https://img.shields.io/badge/LightGBM-4.1.0-orange.svg)](https://lightgbm.readthedocs.io/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Проект команды **№3** для хакатона магистратуры (февраль-март 2025).  
-Разработка ML-модели для генерации торговых сигналов (BUY/SELL/HOLD) на криптовалютных фьючерсах Bybit.
+Проект команды **№3** для хакатона магистратуры (март 2026).  
+Разработка ML-модели для генерации торговых сигналов (BUY/SELL/HOLD) на криптовалютных фьючерсах Bybit.  
+Решение включает в себя исследование целевых переменных, отбор признаков, обучение модели LightGBM и интеграционный слой (polling-воркер + FastAPI) для взаимодействия с платформой заказчика.
 
 ---
 
@@ -18,24 +23,15 @@
 Разработать модель машинного обучения, которая заменит текущую алгоритмическую стратегию на основе пересечения скользящих средних (EMA) и повысит эффективность торговых операций на криптовалютном рынке.
 
 **Технические требования:**
-- Обработка временных рядов минутных данных
-- Классификация на 3 класса: BUY (1), SELL (-1), HOLD (0)
-- Работа с 45 криптовалютными парами
-- Метод разметки: Triple-Barrier Method
+- Обработка минутных данных OHLCV + кастомного осциллятора `rd_value`.
+- Классификация на 3 класса: BUY (1), SELL (-1), HOLD (0).
+- Работа с множеством криптовалютных пар (более 200).
+- Интеграция через API: платформа отдаёт окна признаков, ML-сервис возвращает сигнал.
 
-**Входные данные:**
-- `timestamp` — временная метка (UNIX milliseconds)
-- `symbol` — торговая пара (например, BTCUSDT)
-- `rd_value` — кастомный осциллятор Raw Divergence
-- `fast_ema` / `slow_ema` — быстрая и медленная экспоненциальные скользящие средние
-- `close_price` — цена закрытия минутной свечи
-- `volume` — объем торгов за минуту
-
-**Целевая переменная:**
-- `signal_barrier` — идеальный сигнал (1% Take Profit / 0.5% Stop Loss)
-  - **1 (BUY)** — цена выросла на ≥1% в следующей минуте
-  - **-1 (SELL)** — цена упала на ≥0.5% в следующей минуте
-  - **0 (HOLD)** — цена осталась в диапазоне
+**Входные данные:**  
+`timestamp`, `symbol`, `open`, `high`, `low`, `close_price`, `volume`, `rd_value`.  
+Целевая переменная (для обучения) создавалась нами на основе метода тройного барьера с фиксированными уровнями Take Profit / Stop Loss (TP=1%, SL=0.5%, горизонт 20 баров).  
+Детальное исследование таргетов и фичей описано в [документации](docs/).
 
 ---
 
@@ -43,11 +39,10 @@
 
 | Участник | Роль | GitHub | Основные обязанности |
 |----------|------|--------|---------------------|
-| **Старинцева Наталья** | 🎯 Team Lead + EDA Lead | [@Starnatvl](https://github.com/Starnatvl) | Координация проекта, коммуникация с заказчиком, разведочный анализ данных, итоговая презентация и отчёт |
+| **Старинцева Наталья** | 🎯 Team Lead, EDA Lead, Backend Developer | [@Starnatvl](https://github.com/Starnatvl) | Координация проекта, коммуникация с заказчиком, разведочный анализ данных, разработка API и интеграционного слоя, итоговая презентация |
 | **Кобзева Мария** | 📊 Data Scientist | [@Maria_Kob](https://github.com/Maria_Kob) | EDA, feature engineering, обработка данных, эксперименты с моделями, визуализация |
-| **Стрик Наталья** | 🔬 Data Scientist + QA | [@StrikNa](https://github.com/StrikNa) | Feature engineering, обучение классических моделей, балансировка классов, тестирование |
+| **Стрик Наталья** | 🔬 Data Scientist + QA | [@StrikNa](https://github.com/StrikNa) | Feature engineering, обучение классических моделей, балансировка классов, бэктестинг |
 | **Мюлинг Илья** | 🤖 ML Engineer | [@IluxaXP](https://github.com/IluxaXP) | Пайплайн обучения, подбор гиперпараметров, inference-скрипт, экспорт моделей (ONNX) |
-| **Халевин Кирилл** | ⚙️ Backend Developer + MLOps | [@kirill57396](https://github.com/kirill57396) | FastAPI разработка, интеграция модели, Docker, CI/CD, развертывание |
 
 ---
 
@@ -56,367 +51,150 @@
 ```text
 trading-signals-ml/
 │
-├── .gitignore                      # Игнорируемые файлы (данные, веса моделей)
-├── README.md                       # Документация проекта (этот файл)
-├── requirements.txt                # Python зависимости
-├── docker-compose.yml              # Docker конфигурация (опционально)
-├── Dockerfile                      # Docker образ для API
+├── .gitignore
+├── README.md
+├── requirements.txt                # Python‑зависимости
+├── docker-compose.yml               # Запуск всех сервисов одной командой
+├── Dockerfile.api                    # Образ для FastAPI
+├── Dockerfile.worker                  # Образ для polling‑воркера
+├── Dockerfile.mock                     # Образ для мок‑сервера (Node.js)
 │
-├── data/                           # 📊 Данные (не коммитятся в Git!)
-│   ├── raw/                        # Сырые данные от заказчика
-│   │   └── ml_dataset_2026-01-19.csv
-│   ├── processed/                  # Обработанные данные
-│   │   ├── train.csv               # Обучающая выборка
-│   │   ├── test.csv                # Тестовая выборка
-│   │   └── features_v1.csv         # Датасет с новыми признаками
-│   └── external/                   # Дополнительные внешние данные
+├── data/                             # Данные (игнорируются git)
+│   └── raw/dataset_rework/            # Исходные CSV от заказчика
 │
-├── notebooks/                      # 📓 Jupyter ноутбуки для исследований
-│   ├── 01_eda_analysis.ipynb       # EDA: анализ данных (Наталья С.)
-│   ├── 02_data_quality.ipynb       # Качество данных, пропуски (Наталья Стрик)
-│   ├── 03_feature_engineering.ipynb # Генерация признаков (Наталья Стрик + Мария)
-│   ├── 04_model_experiments.ipynb  # Эксперименты с моделями (Илья)
-│   ├── 05_model_comparison.ipynb   # Сравнение моделей (Илья)
-│   └── 06_backtesting.ipynb        # Бэктестинг стратегии (Наталья Стрик)
+├── notebooks/                         # Jupyter ноутбуки (EDA, эксперименты)
 │
-├── src/                            # 💻 Исходный код проекта
-│   ├── __init__.py
-│   │
-│   ├── data/                       # Модули для работы с данными
-│   │   ├── __init__.py
-│   │   ├── load_data.py            # Загрузка данных из CSV
-│   │   ├── preprocessing.py        # Предобработка (пропуски, нормализация)
-│   │   ├── feature_engineering.py  # Генерация новых признаков
-│   │   └── split_data.py           # Time-based Train/Test split
-│   │
-│   ├── models/                     # ML-модели
-│   │   ├── __init__.py
-│   │   ├── baseline.py             # Baseline модель (Random Forest)
-│   │   ├── catboost_model.py       # CatBoost Classifier
-│   │   ├── xgboost_model.py        # XGBoost Classifier
-│   │   ├── lstm_model.py           # LSTM модель (опционально)
-│   │   └── model_utils.py          # Утилиты (сохранение, загрузка)
-│   │
-│   ├── evaluation/                 # Оценка качества моделей
-│   │   ├── __init__.py
-│   │   ├── metrics.py              # Метрики (F1, Precision, Recall)
-│   │   ├── backtesting.py          # Симуляция торговли
-│   │   └── visualization.py        # Визуализация результатов
-│   │
-│   └── api/                        # FastAPI сервис
-│       ├── __init__.py
-│       ├── app.py                  # Главное приложение FastAPI
-│       ├── inference.py            # Скрипт инференса модели
-│       └── schemas.py              # Pydantic схемы (Request/Response)
+├── src/                               # Исходный код
+│   ├── data/                           # Загрузчики данных
+│   ├── features/                        # Feature pipeline (add_features)
+│   ├── api/                              # FastAPI приложение
+│   │   ├── app.py                         # Эндпоинты
+│   │   └── inference.py                    # Общая функция predict
+│   └── ...
 │
-├── models/                         # 🎯 Сохраненные веса моделей
-│   ├── baseline_v1.pkl             # Baseline Random Forest
-│   ├── catboost_v2.cbm             # CatBoost (лучшая модель)
-│   ├── xgboost_v1.json             # XGBoost
-│   └── final_model.onnx            # Финальная модель (ONNX формат)
+├── models/                             # Сохранённые артефакты модели
+│   ├── champion_hackathon_tp_sl_1_05.joblib   # LightGBM
+│   ├── scaler_tp_sl_1_05.joblib               # StandardScaler
+│   └── features_selected_tp_sl_1_05.txt       # Отобранные фичи
 │
-├── configs/                        # ⚙️ Конфигурационные файлы
-│   ├── config.yaml                 # Основные настройки проекта
-│   ├── model_config.yaml           # Гиперпараметры моделей
-│   └── feature_config.yaml         # Настройки Feature Engineering
+├── integration/                        # Интеграционный слой (polling)
+│   ├── worker.py                         # Основной цикл опроса
+│   └── config.py                          # Настройки (переменные окружения)
 │
-├── scripts/                        # 🔧 Исполняемые скрипты
-│   ├── train.py                    # Обучение модели из командной строки
-│   ├── evaluate.py                 # Оценка модели на тестовой выборке
-│   ├── export_model.py             # Экспорт модели в ONNX
-│   └── run_api.sh                  # Bash-скрипт для запуска API
+├── mock/                               # Мок‑сервер платформы (Node.js)
+│   ├── server.js
+│   ├── package.json
+│   └── data/                             # JSON с историческими данными для демо
 │
-├── tests/                          # 🧪 Юнит-тесты
-│   ├── __init__.py
-│   ├── test_data_processing.py     # Тесты обработки данных
-│   ├── test_features.py            # Тесты генерации признаков
-│   ├── test_model.py               # Тесты моделей
-│   └── test_api.py                 # Тесты API эндпоинтов
+├── scripts/                             # Вспомогательные скрипты
+│   └── prepare_demo_data.py               # Подготовка данных для мок‑сервера
 │
-├── docs/                           # 📚 Документация
-│   ├── architecture.md             # Архитектура решения
-│   ├── data_description.md         # Подробное описание данных
-│   ├── feature_engineering.md      # Документация по признакам
-│   ├── model_selection.md          # Обоснование выбора модели
-│   ├── api_documentation.md        # Документация API
-│   └── deployment_guide.md         # Руководство по развертыванию
-│
-├── reports/                        # 📊 Отчеты и презентации
-│   ├── figures/                    # Графики и визуализации
-│   │   ├── class_distribution.png  # Распределение классов
-│   │   ├── feature_importance.png  # Важность признаков
-│   │   ├── confusion_matrix.png    # Матрица ошибок
-│   │   ├── backtest_results.png    # Результаты бэктестинга
-│   │   └── model_comparison.png    # Сравнение моделей
-│   ├── presentation.pptx           # Финальная презентация для защиты
-│   ├── technical_report.pdf        # Технический отчет
-│   └── business_analysis.pdf       # Бизнес-анализ результатов
-│
-└── experiments/                    # 🔬 Логи экспериментов (MLflow/W&B)
-    └── experiment_logs.txt
+├── docs/                                # Документация (исследования)
+└── tests/                               # Тесты
 ```
+
+---
+
+## 📊 Ключевые результаты
+
+- **Лучшая модель:** LightGBM с целевой переменной `tp_sl_1_05` (TP=1%, SL=0.5%).
+- **Метрики:** AUC = 0.705, F1 = 0.654.
+- **Прибыльность:** чистая доходность (net %) в бэктесте **+2011%** при комиссии 0.1% (2768 сделок).
+- **Фичи:** 20 отобранных признаков (на основе `rd_value`, OHLCV, технических индикаторов).
+- **Интеграция:** реализованы polling-воркер и FastAPI-сервер, поддерживающие спецификацию 2.1.0 (взаимодействие с платформой через REST).
 
 ---
 
 ## 🚀 Быстрый старт
 
 ### 1️⃣ Клонирование репозитория
-
 ```bash
 git clone https://github.com/your-team/trading-signals-ml.git
 cd trading-signals-ml
 ```
 
-### 2️⃣ Создание виртуального окружения
+### 2️⃣ Запуск демо с реальными данными (локально)
 
-**Linux / macOS:**
+#### Установка зависимостей Python
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-```
-
-**Windows:**
-```cmd
-python -m venv venv
-venv\Scripts\activate
-```
-
-### 3️⃣ Установка зависимостей
-
-```bash
-pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4️⃣ Подготовка данных
+#### Подготовка демо‑данных
+Убедитесь, что папка `data/raw/dataset_rework` содержит исходные CSV.  
+Затем выполните:
+```bash
+python scripts/prepare_demo_data.py --symbol SCRT --output mock/data/btcusdt_demo.json
+```
+Скрипт выберет самый длинный непрерывный отрезок для символа SCRT и сохранит его в JSON для мок‑сервера.
 
-Положите файл `ml_dataset_2026-01-19.csv` в папку `data/raw/`
+#### Запуск мок‑сервера (эмулятор платформы)
+```bash
+cd mock
+npm install
+node server.js
+# Сервер будет доступен на http://localhost:3000
+```
+
+#### Запуск polling‑воркера (в другом терминале)
+```bash
+cd integration
+python worker.py
+# Воркер начнёт опрашивать мок‑сервер, вызывать модель и отправлять сигналы
+```
+
+#### (Опционально) Запуск FastAPI
+```bash
+uvicorn src.api.app:app --reload
+# Документация: http://localhost:8000/docs
+```
+
+### 3️⃣ Запуск через Docker Compose (рекомендуется для демо)
 
 ```bash
-# Запуск предобработки
-python src/data/preprocessing.py
+docker-compose up --build
 ```
+Будут подняты три контейнера:
+- `mock` на порту 3000
+- `worker` (без открытого порта)
+- `api` на порту 8000
 
-### 5️⃣ Обучение модели
-
-```bash
-# Базовая команда
-python scripts/train.py --config configs/config.yaml
-
-# С указанием конкретной модели
-python scripts/train.py --model catboost --cv 5
-```
-
-### 6️⃣ Запуск API
-
-```bash
-uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Интерактивная документация:** [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 📊 Основные результаты
-
-| Метрика | Baseline (EMA) | Random Forest | CatBoost | **Финальная модель** |
-|---------|----------------|---------------|----------|----------------------|
-| **F1-score (macro)** | 0.23 | 0.45 | 0.58 | **in test** |
-| **Precision (BUY)** | 0.42 | 0.63 | 0.71 | **in test** |
-| **Recall (SELL)** | 0.19 | 0.51 | 0.64 | **in test** |
-| **Accuracy** | 0.89 | 0.91 | 0.93 | **in test** |
-| **ROI (backtest)** | +2.3% | +5.1% | +8.7% | **+11.2%** |
-
-### 🎯 Ключевые достижения
-
-✅ **Превосходство над baseline:** Модель превосходит текущую EMA-стратегию в **4.9 раза** по прибыли  
-✅ **Точность прогнозов BUY:** 74% (в 1.76 раза лучше baseline)  
-✅ **Снижение ложных сигналов:** Сокращение убыточных сделок на 52%  
-✅ **Обработка несбалансированных данных:** Работает с распределением классов 90% HOLD / 7% SELL / 3% BUY
-
----
-
-## 🔬 Используемые технологии
-
-### Machine Learning
-- **Модель:** CatBoost (Gradient Boosting on Decision Trees)
-- **Feature Engineering:** Лаги, скользящие окна, технические индикаторы (RSI, MACD, Bollinger Bands)
-- **Работа с дисбалансом:** Class Weights + Focal Loss
-- **Валидация:** TimeSeriesSplit (5 фолдов, без заглядывания в будущее)
-
-### Backend & API
-- **Framework:** FastAPI 0.109.0
-- **Server:** Uvicorn (ASGI)
-- **Схемы:** Pydantic для валидации данных
-- **Формат модели:** ONNX (кросс-платформенный инференс)
-
-### Data Processing
-- **Pandas** — обработка табличных данных
-- **NumPy** — векторные вычисления
-- **TA-Lib** — технические индикаторы (опционально)
-- **PyYAML** — конфигурационные файлы
-
-### Visualization & Analysis
-- **Matplotlib / Seaborn** — статические графики
-- **Plotly** — интерактивные дашборды
-- **Jupyter** — исследовательский анализ
-
----
-
-## 📡 Использование API
-
-### Эндпоинт: `POST /predict`
-
-Генерирует торговый сигнал на основе последних N минут данных.
-
-**Request:**
-```json
-POST http://localhost:8000/predict
-
-{
-  "features": [
-    [-0.5, 0.2, -0.1, 100.5, 12345.0],
-    [-0.3, 0.1, -0.05, 100.6, 13456.0],
-    [-0.1, 0.0, 0.0, 100.7, 14567.0]
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "prediction": 1,
-  "signal": "BUY",
-  "confidence": 0.87,
-  "timestamp": "2025-02-15T14:30:00Z"
-}
-```
-
-**Коды сигналов:**
-- `1` → **BUY** (открыть длинную позицию)
-- `-1` → **SELL** (открыть короткую позицию)
-- `0` → **HOLD** (не входить в рынок)
-
-### Дополнительные эндпоинты
-
-```bash
-# Проверка работоспособности API
-GET http://localhost:8000/health
-
-# Получение информации о модели
-GET http://localhost:8000/model/info
-
-# Главная страница
-GET http://localhost:8000/
-```
+Логи воркера и мок‑сервера отображаются в консоли.
 
 ---
 
 ## 🧪 Тестирование
 
 ```bash
-# Запуск всех тестов
 pytest tests/ -v
-
-# Тесты с покрытием кода
-pytest tests/ --cov=src --cov-report=html
-
-# Только тесты API
-pytest tests/test_api.py -v
-
-# Только тесты моделей
-pytest tests/test_model.py -v
 ```
 
 ---
 
 ## 📚 Документация
 
-### Основные документы
-
-| Документ | Описание | Ответственный |
-|----------|----------|---------------|
-| [architecture.md](docs/architecture.md) | Архитектура решения, диаграммы компонентов | Кирилл Халевин |
-| [data_description.md](docs/data_description.md) | Подробное описание данных, статистики, пропуски | Наталья Стрик |
-| [feature_engineering.md](docs/feature_engineering.md) | Документация по созданным признакам | Мария Кобзева |
-| [model_selection.md](docs/model_selection.md) | Обоснование выбора модели, сравнение подходов | Илья Мюлинг |
-| [api_documentation.md](docs/api_documentation.md) | Полная документация API с примерами | Кирилл Халевин |
-| [deployment_guide.md](docs/deployment_guide.md) | Руководство по развертыванию (Docker, Cloud) | Кирилл Халевин |
-
-### Дополнительные материалы
-
-- **Презентация проекта:** `reports/presentation.pptx`
-- **Технический отчет:** `reports/technical_report.pdf`
-- **Бизнес-анализ:** `reports/business_analysis.pdf` (для заказчика)
-- **Jupyter ноутбуки:** Детальные исследования в папке `notebooks/`
-
----
-
-## 🤝 Контакты и поддержка
-
-### Команда проекта
-
-- **Общие вопросы:** [@Starnatvl](https://github.com/Starnatvl) (Team Lead)
-- **Вопросы по данным:** [@StrikNa](https://github.com/StrikNa) (Data Quality)
-- **Вопросы по EDA:** [@Starnatvl](https://github.com/Starnatvl) (EDA Lead)
-- **Вопросы по документации:** [@Maria_Kob](https://github.com/Maria_Kob) (Documentation)
-- **Вопросы по ML:** [@IluxaXP](https://github.com/IluxaXP) (ML Engineer)
-- **Вопросы по бизнес-логике:** [@StrikNa](https://github.com/StrikNa) (Business Analyst)
-- **Вопросы по API:** [@kirill57396](https://github.com/kirill57396) (API Developer)
-
-### Техническая поддержка
-
-- **Баг-репорты и предложения:** Создайте [Issue](https://github.com/your-team/trading-signals-ml/issues)
-- **Email команды:** star.nat.vl@gmail.com
-- **Telegram чат:** @
----
-
-## 🎓 Образовательная программа
-
-Проект выполнен в рамках **Проектной практики** магистерской программы (2 курс).
-
-**Цель хакатона:**  
-Отработать полный цикл разработки AI-сервиса по реальному индустриальному брифу — от анализа задач заказчика и проектирования архитектуры до реализации MVP, тестирования и защиты решения.
-
-**Навыки, полученные командой:**
-- Чтение брифа заказчика и перевод в технические задачи
-- Планирование и реализация ML-прототипов в команде
-- Работа с временными рядами и финансовыми данными
-- Проектирование RESTful API для ML-моделей
-- Документирование архитектуры и процесса разработки
-- Презентация технических решений перед бизнес-заказчиком
-
----
-
-## 📝 Лицензия
-
-MIT License — проект создан в рамках учебного хакатона.
+Подробные исследования целевых переменных, фичей и экспериментов находятся в папке [`docs/`](docs/).  
+Основные файлы:
+- `01_TARGET_VARIABLES_RESEARCH.md` – обзор методов разметки.
+- `02_TARGET_RESEARCH_CONCLUSIONS.md` – выбор `tp_sl_1_05`.
+- `08_FEATURES_SOURCES_AND_RATIONALE.md` – описание фичей и их отбор.
+- `05_PIPELINE_CONCLUSIONS.md` – итоги пайплайна.
 
 ---
 
 ## 🙏 Благодарности
 
-- **[2engine](https://2engine.ru/)** — за предоставленный реальный кейс и данные
-- **Менторы хакатона** — за ценную обратную связь на всех этапах
-- **Университет** — за организацию проектной практики
-- **Open Source сообщество** — за инструменты (CatBoost, FastAPI, scikit-learn)
+- **2engine** – за предоставленный реальный кейс и данные.
+- **Менторы хакатона** – за обратную связь.
+- **Open Source сообщество** – за библиотеки (LightGBM, FastAPI, scikit-learn).
 
 ---
 
-## 📌 Дополнительные ресурсы
+## 📌 Контакты
 
-### Статьи и исследования
-- [CatBoost: gradient boosting with categorical features](https://arxiv.org/abs/1706.09516)
-- [Triple-Barrier Method for Labeling Financial Data](https://www.quantstart.com/articles/advances-in-financial-machine-learning/)
-- [Time Series Classification Review](https://arxiv.org/abs/1809.04356)
+- **Team Lead:** Наталья Старинцева – [@Starnatvl](https://github.com/Starnatvl), star.nat.vl@gmail.com
+- По вопросам API и интеграции – туда же.
 
-### Полезные инструменты
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [CatBoost Tutorials](https://catboost.ai/en/docs/)
-- [Backtrader — Backtesting Library](https://www.backtrader.com/)
-
----
-
-**⭐ Если проект был полезен, поставьте звезду на GitHub!**
-
-_Последнее обновление: 18 февраля 2025_
+```
