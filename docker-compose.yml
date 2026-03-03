@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  mock:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock
+    ports:
+      - "3000:3000"
+    networks:
+      - demo-net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - mock
+    environment:
+      - API_BASE=http://mock:3000   # в worker.py нужно читать из переменной окружения
+    networks:
+      - demo-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    networks:
+      - demo-net
+
+networks:
+  demo-net:
