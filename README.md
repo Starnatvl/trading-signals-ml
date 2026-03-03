@@ -114,18 +114,26 @@ cd trading-signals-ml
 
 ### 2️⃣ Запуск демо с реальными данными (локально)
 
+### Создание и активация виртуального окружения
+python3 -m venv venv
+source venv/bin/activate      # для Linux/macOS
+# или venv\Scripts\activate   # для Windows
+
 #### Установка зависимостей Python
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-#### Подготовка демо‑данных
+#### Подготовка демо‑данных (один раз)
 Убедитесь, что папка `data/raw/dataset_rework` содержит исходные CSV.  
 Затем выполните:
 ```bash
+# Если данные уже лежат в data/raw/dataset_rework:
 python scripts/prepare_demo_data.py --symbol SCRT --output mock/data/btcusdt_demo.json
+
+# Если данные в другом месте, укажите путь:
+python scripts/prepare_demo_data.py --symbol SCRT --output mock/data/btcusdt_demo.json --data-dir /полный/путь/к/dataset_rework
 ```
 Скрипт выберет самый длинный непрерывный отрезок для символа SCRT и сохранит его в JSON для мок‑сервера.
 
@@ -135,17 +143,22 @@ cd mock
 npm install
 node server.js
 # Сервер будет доступен на http://localhost:3000
+# Не закрывайте этот терминал!
 ```
 
 #### Запуск polling‑воркера (в другом терминале)
 ```bash
+cd trading-signals-ml
+source venv/bin/activate
 cd integration
 python worker.py
-# Воркер начнёт опрашивать мок‑сервер, вызывать модель и отправлять сигналы
 ```
 
 #### (Опционально) Запуск FastAPI
 ```bash
+# В третьем терминале
+cd trading-signals-ml
+source venv/bin/activate
 uvicorn src.api.app:app --reload
 # Документация: http://localhost:8000/docs
 ```
@@ -161,6 +174,12 @@ docker-compose up --build
 - `api` на порту 8000
 
 Логи воркера и мок‑сервера отображаются в консоли.
+
+### ⚠️ Важные замечания
+Все команды, кроме cd mock, выполняются из корня репозитория (trading-signals-ml/).
+Виртуальное окружение должно быть активировано перед запуском любых Python‑скриптов.
+Мок‑сервер требует Node.js (проверьте установку: node -v).
+Для подготовки данных убедитесь, что папка dataset_rework содержит подпапки с датами (например, 2026-02-01/SCRT.csv и т.д.).
 
 ---
 
