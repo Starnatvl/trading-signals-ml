@@ -1,12 +1,9 @@
-"""
-FastAPI приложение для инференса
-"""
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List
-import numpy as np
+from typing import List, Optional
+import pandas as pd
 
-from src.api.inference import TradingSignalPredictor
+from .inference import predict
 
 app = FastAPI(
     title="Trading Signals API",
@@ -14,46 +11,43 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Загрузка модели при старте
-predictor = TradingSignalPredictor("models/final_model.pkl")
-
-class PredictionRequest(BaseModel):
+class FeaturesRequest(BaseModel):
     features: List[List[float]]
-    
+    feature_columns: List[str]
+    symbol: str
+    window_end_timestamp: int
+
 class PredictionResponse(BaseModel):
     prediction: int
     signal: str
     confidence: float
 
-@app.get("/")
-def root():
-    return {"message": "Trading Signals API v1.0", "status": "running"}
-
 @app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
-    """
-    Генерация торгового сигнала
-    
-    Request body:
-        features: Массив массивов фичей (N шагов × M признаков)
-        
-    Returns:
-        prediction: 1 (BUY), -1 (SELL), 0 (HOLD)
-        signal: Текстовое описание
-        confidence: Уверенность модели
-    """
+def get_prediction(request: FeaturesRequest):
     try:
-        prediction = predictor.predict(request.features)
-        
+        df = pd.DataFrame(request.features, columns=request.feature_columns)
+        df['symbol'] = request.symbol
+        base_ts = request.window_end_timestamp
+        df['timestamp'] = [base_ts - (len(df)-1-i)*60000 for i in range(len(df))]
+        df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
+
+        if 'close' in df.columns and 'close_price' not in df.columns:
+            df.rename(columns={'close': 'close_price'}, inplace=True)
+
+        signal, confidence = predict(df)
+
         signal_map = {1: "BUY", -1: "SELL", 0: "HOLD"}
-        
         return PredictionResponse(
-            prediction=prediction,
-            signal=signal_map[prediction],
-            confidence=0.85  # TODO: добавить реальную confidence из модели
+            prediction=signal,
+            signal=signal_map[signal],
+            confidence=round(confidence, 4)
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+def root():
+    return {"message": "Trading Signals API v1.0", "status": "running"}
 
 @app.get("/health")
 def health():
