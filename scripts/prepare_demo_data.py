@@ -4,6 +4,7 @@
 Скрипт для подготовки демо-данных из dataset_rework.
 Загружает данные через dataset_rework_loader, выбирает указанный символ,
 находит самый длинный непрерывный отрезок (gap ≤ 1.5 мин) и сохраняет первые N строк в JSON.
+В JSON добавляется поле symbol для каждого объекта.
 """
 
 import os
@@ -128,6 +129,9 @@ def main():
         sys.exit(1)
     demo_df = demo_df[available_cols]
 
+    # Добавляем колонку symbol (одинаковую для всех записей)
+    demo_df['symbol'] = args.symbol
+
     # Сбрасываем индекс и преобразуем в список словарей
     demo_data = demo_df.to_dict(orient="records")
 
@@ -142,6 +146,7 @@ def main():
     print(f"✅ Демо-данные сохранены в {output_path}")
     print(f"   Строк: {len(demo_data)}")
     print(f"   Диапазон времени: {demo_df['timestamp'].min()} – {demo_df['timestamp'].max()}")
+    print(f"   Символ: {args.symbol}")
 
 
 if __name__ == "__main__":

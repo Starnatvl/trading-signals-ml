@@ -8,8 +8,10 @@ app.use(express.json());
 const dataPath = path.join(__dirname, 'data', 'btcusdt_demo.json');
 const rawData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
+// Извлекаем символ из первой записи (если есть), иначе используем запасной
+const symbol = rawData[0]?.symbol || "UNKNOWN";
+
 // Преобразуем в удобный формат: массив объектов с полями
-// Убедимся, что все числа в нужном типе
 const historicalData = rawData.map(item => ({
     timestamp: item.timestamp,
     open: item.open,
@@ -20,16 +22,12 @@ const historicalData = rawData.map(item => ({
     rd_value: item.rd_value
 }));
 
-// Переменная для хранения текущего индекса (имитация реального времени)
-let currentIndex = 60; // будем увеличивать при каждом запросе
+// Переменная для хранения текущего индекса
+let currentIndex = 60; // начинаем с 60, чтобы сразу отдавать READY
 
 // Эндпоинт для получения окна фичей
 app.get('/api/ml/ds/feature-windows', (req, res) => {
-    const readyOnly = req.query.readyOnly === 'true';
-    
-    // Проверяем, хватает ли данных для окна
     if (currentIndex < 60) {
-        // Ещё не накопилось 60 баров — возвращаем статус WARMUP
         return res.json({
             timeframe: "1m",
             lookbackSteps: 60,
@@ -37,22 +35,19 @@ app.get('/api/ml/ds/feature-windows', (req, res) => {
             generatedAt: new Date().toISOString(),
             items: [
                 {
-                    symbol: "BTCUSDT",
+                    symbol: symbol,  // используем переменную symbol
                     state: "WARMUP",
                     reason: "not_enough_points",
                     pointsCollected: currentIndex,
                     expectedPoints: 60,
-                    // можно не отдавать features
                 }
             ]
         });
     }
 
-    // Берём окно из последних 60 записей (от currentIndex-60 до currentIndex-1)
     const start = currentIndex - 60;
     const windowData = historicalData.slice(start, currentIndex);
     
-    // Извлекаем матрицу фичей в нужном порядке
     const features = windowData.map(row => [
         row.rd_value,
         row.open,
@@ -62,7 +57,6 @@ app.get('/api/ml/ds/feature-windows', (req, res) => {
         row.volume
     ]);
 
-    // Формируем ответ
     const response = {
         timeframe: "1m",
         lookbackSteps: 60,
@@ -70,7 +64,7 @@ app.get('/api/ml/ds/feature-windows', (req, res) => {
         generatedAt: new Date().toISOString(),
         items: [
             {
-                symbol: "BTCUSDT",
+                symbol: symbol,  // используем переменную symbol
                 state: "READY",
                 reason: null,
                 pointsCollected: 60,
@@ -82,7 +76,6 @@ app.get('/api/ml/ds/feature-windows', (req, res) => {
         ]
     };
 
-    // Увеличиваем currentIndex для следующего запроса (имитация нового бара)
     if (currentIndex < historicalData.length) {
         currentIndex++;
     }
@@ -90,7 +83,7 @@ app.get('/api/ml/ds/feature-windows', (req, res) => {
     res.json(response);
 });
 
-// Эндпоинт приёма сигналов (без изменений)
+// Эндпоинт приёма сигналов
 app.post('/api/signals/ingest', (req, res) => {
     const { symbol, timestamp, signal, price, rating, source } = req.body;
     if (!symbol || !timestamp || !signal || !price || !rating || !source) {

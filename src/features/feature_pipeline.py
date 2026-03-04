@@ -152,6 +152,46 @@ def _add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _ensure_rd_regime_features(df: pd.DataFrame, by: str = "session_key") -> pd.DataFrame:
+    """Гарантировать наличие rd_regime и rd_regime_transition.
+
+    Приоритет:
+    1) если rd_regime уже есть — используем его;
+    2) если есть signal_barrier — копируем в rd_regime;
+    3) иначе считаем из sign(diff(rd_value)) внутри сессии.
+    """
+    df = df.copy()
+
+    if "rd_regime" not in df.columns:
+        if "signal_barrier" in df.columns:
+            df["rd_regime"] = pd.to_numeric(df["signal_barrier"], errors="coerce").fillna(0)
+        elif "rd_value" in df.columns:
+            sort_cols = [by]
+            if "datetime" in df.columns:
+                sort_cols.append("datetime")
+            elif "timestamp" in df.columns:
+                sort_cols.append("timestamp")
+            df = df.sort_values(sort_cols).reset_index(drop=True)
+            df["rd_regime"] = (
+                df.groupby(by)["rd_value"].diff().pipe(np.sign).fillna(0)
+            )
+        else:
+            raise ValueError("Нужны rd_regime/signal_barrier или rd_value для расчёта rd_regime")
+
+    # Нормализуем к {-1, 0, 1}
+    df["rd_regime"] = np.sign(pd.to_numeric(df["rd_regime"], errors="coerce").fillna(0)).astype(int)
+
+    if "rd_regime_transition" not in df.columns:
+        prev = df.groupby(by)["rd_regime"].shift(1)
+        df["rd_regime_transition"] = ((df["rd_regime"] != prev) & prev.notna()).astype(int)
+    else:
+        df["rd_regime_transition"] = pd.to_numeric(
+            df["rd_regime_transition"], errors="coerce"
+        ).fillna(0).astype(int)
+
+    return df
+
+
 def add_features(
     df: pd.DataFrame,
     session_key_col: str = "session_key",
@@ -173,6 +213,7 @@ def add_features(
     if session_key_col not in df.columns:
         raise ValueError(f"Колонка {session_key_col} отсутствует")
     df = _ensure_ohlc(df.copy())
+    df = _ensure_rd_regime_features(df, by=session_key_col)
 
     df = _add_rd_features(df, by=session_key_col)
     df = _add_price_features(df, by=session_key_col)
