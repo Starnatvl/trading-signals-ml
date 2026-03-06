@@ -2,11 +2,18 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Копируем файлы зависимостей и устанавливаем их
 COPY mock/package*.json ./
 RUN npm install
 
+# Копируем сам сервер
 COPY mock/server.js .
 
+# Копируем папку с данными (JSON-файл, подготовленный скриптом)
+COPY mock/data /app/data
+
+# Открываем порт
 EXPOSE 3000
 
+# Запускаем сервер
 CMD ["node", "server.js"]
