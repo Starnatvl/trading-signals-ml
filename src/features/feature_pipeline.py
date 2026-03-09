@@ -26,11 +26,8 @@ FEATURE_COLS = [
     "ret_1",
     "ret_5",
     "rsi_14",
-    "macd_line",
     "macd_signal",
     "macd_hist",
-    "bb_width",
-    "bb_position",
     "volatility_14",
     "volume_rel_20",
     "body_ratio",
@@ -40,6 +37,7 @@ FEATURE_COLS = [
     "dow_sin",
     "dow_cos",
     "is_weekend",
+    'rd_regime',
 ]
 
 def _ensure_ohlc(df: pd.DataFrame) -> pd.DataFrame:
